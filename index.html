@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Veil — Privacy-First Client-Side PII Sanitizer</title>
+  <link rel="stylesheet" href="src/styles.css">
+  <script defer src="src/detectors.js"></script>
+  <script defer src="src/redact.js"></script>
+  <script defer src="src/audit.js"></script>
+  <script defer src="src/export.js"></script>
+  <script defer src="src/sample.js"></script>
+  <script defer src="src/motion.js"></script>
+  <script defer src="src/main.js"></script>
+</head>
+<body>
+  <div class="bg-grid" aria-hidden="true"></div>
+
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand-group">
+        <div class="logo-mark" aria-hidden="true">
+          <svg viewBox="0 0 32 32" width="28" height="28" fill="none">
+            <path d="M16 3L5 7.5V15.5C5 22.4 9.7 28.4 16 30C22.3 28.4 27 22.4 27 15.5V7.5L16 3Z" stroke="url(#veilMochaLav)" stroke-width="2" fill="rgba(250, 251, 254, 0.1)"/>
+            <path d="M10.5 14.5C12.2 12.7 14 12 16 12C18 12 19.8 12.7 21.5 14.5C19.8 16.3 18 17 16 17C14 17 12.2 16.3 10.5 14.5Z" stroke="#fafbfe" stroke-width="1.7"/>
+            <circle cx="16" cy="14.5" r="1.7" fill="#dcd0ff"/>
+            <line x1="9" y1="21" x2="23" y2="10" stroke="#fafbfe" stroke-width="1.8" stroke-linecap="round"/>
+            <defs>
+              <linearGradient id="veilMochaLav" x1="5" y1="3" x2="27" y2="30" gradientUnits="userSpaceOnUse">
+                <stop stop-color="#fafbfe"/>
+                <stop offset="0.52" stop-color="#d4c4ff"/>
+                <stop offset="1" stop-color="#9c7a66"/>
+              </linearGradient>
+            </defs>
+          </svg>
+        </div>
+        <div>
+          <div class="brand-title-row">
+            <span class="brand-name">Veil</span>
+            <span class="nav-pill">Dashboard</span>
+          </div>
+          <p class="brand-tagline">Your sensitive data never leaves your browser.</p>
+        </div>
+      </div>
+
+      <div class="topbar-actions">
+        <div class="privacy-status" id="privacyStatus">
+          <span>Local Memory Only • Zero Network Calls</span>
+        </div>
+        <span class="client-badge" id="clientBadge">
+          <span class="client-pulse-dot" aria-hidden="true"></span>
+          <span>100% CLIENT-SIDE PROCESSING</span>
+        </span>
+        <button type="button" class="btn btn-ghost btn-motion-toggle" id="motionToggleBtn" aria-pressed="true">Animations: On</button>
+        <button type="button" class="btn btn-ghost" id="topResetBtn">Reset</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <div id="srAnnounce" class="visually-hidden" aria-live="polite" aria-atomic="true"></div>
+
+    <section class="disclaimer-banner atelier-panel" role="note" aria-label="Detection limitations notice">
+      <span class="disclaimer-tag">NOTICE</span>
+      <p class="disclaimer-copy">
+        <strong>Pattern-based detection can miss PII</strong> (such as personal names, street addresses, or unstructured secrets) and does not guarantee complete anonymity or regulatory compliance.
+      </p>
+    </section>
+
+    <section class="panel atelier-panel input-panel" aria-labelledby="inputHeading">
+      <div class="panel-header">
+        <div>
+          <h1 id="inputHeading" class="panel-title">Document Input</h1>
+          <p class="panel-subtitle">Paste raw text or drop a local <code>.txt</code> / <code>.csv</code> file for volatile in-memory inspection.</p>
+        </div>
+        <div class="input-meta" id="inputMeta">0 chars • 0 KB</div>
+      </div>
+
+      <div class="toolbar">
+        <button type="button" class="btn btn-secondary" id="pasteBtn">Paste from clipboard</button>
+        <button type="button" class="btn btn-secondary" id="uploadTriggerBtn">Upload .txt / .csv</button>
+        <input type="file" id="fileInput" accept=".txt,.csv,text/plain,text/csv" class="visually-hidden" aria-label="Upload .txt or .csv file">
+        <button type="button" class="btn btn-accent" id="sampleBtn">Load sample data</button>
+        <button type="button" class="btn btn-ghost" id="clearBtn">Clear</button>
+      </div>
+
+      <div class="dropzone" id="dropzone">
+        <label for="sourceInput" class="visually-hidden">Source text to sanitize</label>
+        <textarea
+          id="sourceInput"
+          class="source-textarea"
+          rows="8"
+          spellcheck="false"
+          autocomplete="off"
+          placeholder="Paste logs, customer support transcripts, CSV rows, or click 'Load sample data'..."
+        ></textarea>
+        <div class="drop-overlay" aria-hidden="true">
+          <span class="drop-overlay-text">Drop .txt or .csv to sanitize locally</span>
+        </div>
+      </div>
+
+      <div class="toast-slot">
+        <div class="feedback-bar" id="feedbackBar" role="status" aria-live="polite"></div>
+      </div>
+    </section>
+
+    <section class="telemetry-rack atelier-panel" aria-label="Detection summary counters">
+      <div class="summary-grid">
+        <article class="counter-card type-email">
+          <span class="counter-label">Emails</span>
+          <strong class="counter-value" id="countEmail">0</strong>
+        </article>
+        <article class="counter-card type-phone">
+          <span class="counter-label">Phones</span>
+          <strong class="counter-value" id="countPhone">0</strong>
+        </article>
+        <article class="counter-card type-ipv4">
+          <span class="counter-label">IPv4</span>
+          <strong class="counter-value" id="countIpv4">0</strong>
+        </article>
+        <article class="counter-card type-pan">
+          <span class="counter-label">PAN</span>
+          <strong class="counter-value" id="countPan">0</strong>
+        </article>
+        <article class="counter-card type-aadhaar">
+          <span class="counter-label">Aadhaar</span>
+          <strong class="counter-value" id="countAadhaar">0</strong>
+        </article>
+        <article class="counter-card type-card">
+          <span class="counter-label">Cards</span>
+          <strong class="counter-value" id="countCard">0</strong>
+        </article>
+        <article class="counter-card type-total">
+          <span class="counter-label">Total</span>
+          <strong class="counter-value" id="countTotal">0</strong>
+        </article>
+      </div>
+    </section>
+
+    <section class="controls-row atelier-panel" aria-label="Redaction mode and entity legend">
+      <div class="mode-group">
+        <span class="control-heading" id="modeLabel">Redaction Mode</span>
+        <div class="segmented-control" role="radiogroup" aria-labelledby="modeLabel" id="modeControl" style="--mode-index: 0;">
+          <span class="segment-indicator" aria-hidden="true"></span>
+          <button type="button" class="segment-btn is-active" role="radio" aria-checked="true" data-mode="full" data-index="0">Full Mask</button>
+          <button type="button" class="segment-btn" role="radio" aria-checked="false" data-mode="partial" data-index="1">Partial Mask</button>
+          <button type="button" class="segment-btn" role="radio" aria-checked="false" data-mode="pseudonym" data-index="2">Pseudonymize</button>
+        </div>
+      </div>
+
+      <div class="legend" aria-label="Entity color legend">
+        <span class="legend-item"><i class="swatch type-email"></i>Email</span>
+        <span class="legend-item"><i class="swatch type-phone"></i>Phone</span>
+        <span class="legend-item"><i class="swatch type-ipv4"></i>IPv4</span>
+        <span class="legend-item"><i class="swatch type-pan"></i>PAN</span>
+        <span class="legend-item"><i class="swatch type-aadhaar"></i>Aadhaar</span>
+        <span class="legend-item"><i class="swatch type-card"></i>Card</span>
+      </div>
+    </section>
+
+    <section class="diff-grid" id="diffGrid" aria-label="Side-by-side redaction comparison">
+      <article class="panel atelier-panel diff-panel">
+        <div class="panel-header">
+          <h2 class="panel-title">Original (Detected PII Highlighted)</h2>
+          <span class="panel-pill">In-Memory View</span>
+        </div>
+        <div class="diff-stage" id="originalStage">
+          <div class="scan-line" aria-hidden="true"></div>
+          <div id="originalPreview" class="diff-surface" aria-live="off"></div>
+        </div>
+      </article>
+
+      <article class="panel atelier-panel diff-panel diff-panel-sanitized">
+        <div class="panel-header">
+          <h2 class="panel-title">Sanitized (Safe Output)</h2>
+          <span class="panel-pill panel-pill-safe">Export Ready</span>
+        </div>
+        <div class="diff-stage" id="sanitizedStage">
+          <div id="sanitizedPreview" class="diff-surface" aria-live="off"></div>
+        </div>
+      </article>
+    </section>
+
+    <section class="bottom-grid">
+      <article class="panel atelier-panel" aria-labelledby="exportHeading">
+        <div class="panel-header">
+          <div>
+            <h2 id="exportHeading" class="panel-title">Sanitized Export</h2>
+            <p class="panel-subtitle">Only redacted output is ever copied or written.</p>
+          </div>
+        </div>
+        <div class="export-actions">
+          <button type="button" class="btn btn-primary" id="downloadTxtBtn">Download sanitized .txt</button>
+          <button type="button" class="btn btn-primary" id="downloadCsvBtn" disabled>Download sanitized .csv</button>
+          <button type="button" class="btn btn-secondary" id="copyBtn">Copy sanitized text</button>
+          <button type="button" class="btn btn-ghost" id="exportResetBtn">Reset document</button>
+        </div>
+        <p class="export-note" id="exportMessage" role="status" aria-live="polite">Enter text or upload a file to enable sanitized export.</p>
+      </article>
+
+      <article class="panel atelier-panel" aria-labelledby="auditHeading">
+        <div class="panel-header">
+          <h2 id="auditHeading" class="panel-title">Session Audit Summary</h2>
+          <span class="status-badge" id="auditStatusBadge" data-status="Idle">Idle</span>
+        </div>
+        <dl class="audit-list">
+          <div class="audit-row">
+            <dt>Entities detected</dt>
+            <dd id="auditDetected">0</dd>
+          </div>
+          <div class="audit-row">
+            <dt>Entities redacted</dt>
+            <dd id="auditRedacted">0</dd>
+          </div>
+          <div class="audit-row">
+            <dt>Selected mode</dt>
+            <dd id="auditMode">Full Mask</dd>
+          </div>
+          <div class="audit-row">
+            <dt>File type</dt>
+            <dd id="auditFileType">None</dd>
+          </div>
+          <div class="audit-row">
+            <dt>Processing status</dt>
+            <dd id="auditStatus">Idle</dd>
+          </div>
+        </dl>
+      </article>
+    </section>
+
+    <section class="panel atelier-panel prompt-log-panel" aria-label="Development prompt log">
+      <details>
+        <summary class="prompt-log-summary">
+          <span>Prompt Log (Static Build History — Never Contains Document Data)</span>
+          <span class="summary-chevron" aria-hidden="true">▾</span>
+        </summary>
+        <ol class="prompt-log-list" id="promptLogList"></ol>
+      </details>
+    </section>
+  </main>
+</body>
+</html>
